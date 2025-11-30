@@ -1,0 +1,100 @@
+# Laravel Flash Sale Checkout System
+
+A high-concurrency flash sale API that handles limited stock products with temporary holds, order creation, and idempotent payment webhooks.
+
+## Core Features
+
+- **Product Management**: Real-time stock availability with caching
+- **Temporary Holds**: 2-minute stock reservations that auto-release
+- **Order Creation**: Converts valid holds to pending orders
+- **Idempotent Webhooks**: Handles duplicate and out-of-order payment notifications
+- **Concurrency Safety**: Prevents overselling under heavy load
+
+## Assumptions & Invariants
+
+1. **Stock Management**: Available stock = total stock - reserved stock
+2. **Hold Expiry**: Holds expire after 2 minutes and auto-release stock
+3. **Idempotency**: Webhooks with same idempotency key are processed once
+4. **Concurrency**: Database-level locking prevents race conditions
+5. **Consistency**: All stock operations are transactional
+
+## Installation
+
+1. Clone the repository
+2. Install dependencies:
+   ```bash
+   composer install
+
+## Configure environment:
+
+cp .env.example .env
+php artisan key:generate
+
+
+Update .env with your database credentials
+
+Run migrations and seeders:
+
+bash
+php artisan migrate
+php artisan db:seed
+Running the Application
+bash
+php artisan serve
+The API will be available at http://localhost:8000/api
+
+API Endpoints
+Get Product
+http
+GET /api/products/{id}
+Returns product details including accurate available stock.
+
+Create Hold
+http
+POST /api/holds
+json
+{
+  "product_id": 1,
+  "qty": 2
+}
+Creates a 2-minute stock reservation.
+
+Create Order
+http
+POST /api/orders
+json
+{
+  "hold_token": "hold-token-uuid"
+}
+Converts a valid hold to a pending order.
+
+Payment Webhook
+http
+POST /api/payments/webhook
+Headers: Idempotency-Key: unique-key
+
+json
+{
+  "status": "success",
+  "order_id": 1,
+  "failure_reason": "insufficient_funds"
+}
+Processes payment results idempotently.
+
+Scheduled Tasks
+Add to app/Console/Kernel.php:
+
+php
+protected function schedule(Schedule $schedule)
+{
+    $schedule->command('holds:release-expired')->everyMinute();
+}
+Run scheduler:
+
+bash
+php artisan schedule:work
+Testing
+Run the test suite:
+
+bash
+php artisan test
